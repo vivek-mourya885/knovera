@@ -2,25 +2,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-
-
 export const metadata: Metadata = {
   title: "Knovera - Daily Knowledge Game",
   description: "Your daily knowledge game. 5 questions, 3 minutes, new daily.",
-  keywords: "quiz, knowledge, daily game, trivia, GK, knovera",
-  metadataBase: new URL("https://playnovera.com"),
-  openGraph: {
-    title: "Knovera - Daily Knowledge Game",
-    description: "Test your knowledge daily with 5 curated questions",
-    type: "website",
-    url: "https://playnovera.com",
-    siteName: "Knovera",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Knovera - Daily Knowledge Game",
-    description: "Test your knowledge daily with 5 curated questions",
-  },
 };
 
 export default function RootLayout({

@@ -207,30 +207,15 @@ export default function GamePage() {
     setLang((l) => (l === "en" ? "hi" : "en"));
   }
 
-
-
   async function shareScore() {
     const text = lang === "en"
-      ? `I scored ${score}/${questions.length} on Knovera! 🧠\nCan you beat me?\n👉 https://playnovera.com`
-      : `मैंने Knovera पर ${score}/${questions.length} स्कोर किया! 🧠\nक्या आप मुझे हरा सकते हैं?\n👉 https://playnovera.com`;
-
+      ? `I scored ${score}/${questions.length} on Knovera! 🔥\nCan you beat me?\nhttps://knovera.vercel.app`
+      : `मैंने Knovera पर ${score}/${questions.length} स्कोर किया! 🔥\nक्या आप मुझे हरा सकते हैं?\nhttps://playknovera.com`;
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: lang === "en" ? "Knovera - Daily Knowledge Game" : "Knovera - Daily Knowledge Game",
-          text: text,
-          url: "https://playnovera.com",
-        });
-      } catch {
-        // user cancelled share
-      }
+      try { await navigator.share({ title: "Knovera Score", text }); } catch { /* cancelled */ }
     } else {
-      try {
-        await navigator.clipboard.writeText(text);
-        alert(lang === "en" ? "Score copied to clipboard!" : "स्कोर क्लिपबोर्ड पर कॉपी हो गया!");
-      } catch {
-        // fallback
-      }
+      await navigator.clipboard.writeText(text);
+      alert(lang === "en" ? "Score copied to clipboard!" : "स्कोर कॉपी हो गया!");
     }
   }
 
