@@ -209,7 +209,7 @@ export default function GamePage() {
 
   async function shareScore() {
     const text = lang === "en"
-      ? `I scored ${score}/${questions.length} on Knovera! 🔥\nCan you beat me?\nhttps://knovera.vercel.app`
+      ? `I scored ${score}/${questions.length} on Knovera! 🔥\nCan you beat me?\nhttps://playknovera.com`
       : `मैंने Knovera पर ${score}/${questions.length} स्कोर किया! 🔥\nक्या आप मुझे हरा सकते हैं?\nhttps://playknovera.com`;
     if (navigator.share) {
       try { await navigator.share({ title: "Knovera Score", text }); } catch { /* cancelled */ }
