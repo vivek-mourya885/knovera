@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+
 // Fixed particle data - no Math.random() during render
 const PARTICLE_DATA = [
   { left: 5, delay: 0.2, duration: 5.1 },
