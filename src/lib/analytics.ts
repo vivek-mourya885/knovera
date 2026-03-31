@@ -39,10 +39,23 @@ export function trackPlayClick() {
 
 // ============ GAME EVENTS ============
 
-/** Track when game starts */
-export function trackGameStart() {
+type GameName = "pulse" | "lexi" | "fluent" | "lexi_practice";
+
+/** Track when a game page is opened */
+export function trackGameStart(game: GameName) {
   sendEvent("game_start", {
-    page: "game",
+    game_name: game,
+    date: new Date().toISOString().split("T")[0],
+  });
+}
+
+/** Track when a game is completed */
+export function trackGamePlayed(game: GameName, score: number, total: number) {
+  sendEvent("game_played", {
+    game_name: game,
+    score,
+    total,
+    percentage: Math.round((score / total) * 100),
     date: new Date().toISOString().split("T")[0],
   });
 }

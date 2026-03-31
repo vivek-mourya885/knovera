@@ -19,7 +19,7 @@ export interface Question {
   };
 }
 
-const ALL_QUESTIONS: Question[] = [
+export const ALL_QUESTIONS: Question[] = [
   // ===== DAY 1 SET (Q1-Q5) =====
   {
     question: {

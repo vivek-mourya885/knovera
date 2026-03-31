@@ -2,13 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
-import type { Question } from "@/lib/questions";
 import { trackGameStart, trackGamePlayed } from "@/lib/analytics";
 
 const QUESTION_TIME = 30;
-const LAUNCH_DATE = new Date(2026, 1, 17); // Pulse launched Feb 17, 2026
-
-type Lang = "en" | "hi";
+const LAUNCH_DATE = new Date(2026, 3, 1); // Fluent goes live April 1, 2026
 
 /* ── Day number ─────────────────────────────────────────── */
 function getDayNumber(): number {
@@ -38,7 +35,7 @@ interface GameStats {
 
 const EMPTY_STATS: GameStats = { currentStreak: 0, perfectStreak: 0, totalPlayed: 0, lastPlayedDate: "", lastPerfect: false, totalKP: 0 };
 
-function loadStats(key = "knovera_stats"): GameStats {
+function loadStats(key = "knovera_english_stats"): GameStats {
   if (typeof window === "undefined") return { ...EMPTY_STATS };
   try {
     const raw = localStorage.getItem(key);
@@ -47,7 +44,7 @@ function loadStats(key = "knovera_stats"): GameStats {
   return { ...EMPTY_STATS };
 }
 
-function saveStats(stats: GameStats, key = "knovera_stats") {
+function saveStats(stats: GameStats, key = "knovera_english_stats") {
   if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(stats));
 }
@@ -87,9 +84,9 @@ function getCelebration(score: number) {
 /* ── Streak helpers ─────────────────────────────────────── */
 function buildWeekCalendar(streak: number): { label: string; played: boolean; isToday: boolean }[] {
   const LABELS = ["S", "M", "T", "W", "T", "F", "S"];
-  const todayIdx = new Date().getDay(); // 0=Sun … 6=Sat
+  const todayIdx = new Date().getDay();
   return LABELS.map((label, i) => {
-    const diff = i - todayIdx; // negative = past, 0 = today, positive = future
+    const diff = i - todayIdx;
     const played = diff <= 0 && Math.abs(diff) < streak;
     return { label, played, isToday: diff === 0 };
   });
@@ -107,9 +104,9 @@ const STREAK_MILESTONES = [
 ];
 
 function getStreakSubtext(streak: number): string {
-  if (streak >= 31) return "You're a legend! 🎖️";
-  if (streak >= 7)  return "Absolutely unstoppable! 🏆";
-  if (streak >= 5)  return "You're a Superstar! 🌟";
+  if (streak >= 31) return "You're a legend!";
+  if (streak >= 7)  return "Absolutely unstoppable!";
+  if (streak >= 5)  return "You're a Superstar!";
   if (streak >= 3)  return "Back for more? Awesome!";
   if (streak === 2) return "Two days in a row!";
   if (streak === 1) return "Day 1 — come back tomorrow!";
@@ -127,9 +124,19 @@ function getTimeUntilMidnight(): string {
   return `${hours}h ${minutes}m`;
 }
 
+/* ── Question type ──────────────────────────────────────── */
+interface EnglishQuestion {
+  question: string;
+  options: string[];
+  answer: string;
+  explanation: string;
+  hint: string | null;
+  category: string | null;
+}
+
 /* ── Component ──────────────────────────────────────────── */
-export default function GamePage() {
-  const [questions,     setQuestions]     = useState<Question[]>([]);
+export default function FluentPage() {
+  const [questions,     setQuestions]     = useState<EnglishQuestion[]>([]);
   const [current,       setCurrent]       = useState(0);
   const [selected,      setSelected]      = useState<string | null>(null);
   const [review,        setReview]        = useState(false);
@@ -141,11 +148,11 @@ export default function GamePage() {
   const [countdown,     setCountdown]     = useState("");
   const [animatedScore, setAnimatedScore] = useState(0);
   const [dayNumber,     setDayNumber]     = useState(1);
-  const [lang,          setLang]          = useState<Lang>("en");
+  const [showHint,      setShowHint]      = useState(false);
 
   // Next games state
-  const [lexiDone,   setLexiDone]   = useState(false);
-  const [fluentDone, setFluentDone] = useState(false);
+  const [pulseDone, setPulseDone] = useState(false);
+  const [lexiDone,  setLexiDone]  = useState(false);
 
   const hasRecorded = useRef(false);
 
@@ -153,10 +160,10 @@ export default function GamePage() {
   useEffect(() => {
     setDayNumber(getDayNumber());
     const today = getTodayStr();
+    setPulseDone(loadStats("knovera_stats").lastPlayedDate === today);
     setLexiDone(loadStats("knovera_word_stats").lastPlayedDate === today);
-    setFluentDone(loadStats("knovera_english_stats").lastPlayedDate === today);
-    trackGameStart("pulse");
-    fetch("/api/questions")
+    trackGameStart("fluent");
+    fetch("/api/english")
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setQuestions(data); })
       .catch(err => console.error("Error fetching questions:", err));
@@ -177,7 +184,7 @@ export default function GamePage() {
   useEffect(() => {
     if (isFinished && !hasRecorded.current) {
       hasRecorded.current = true;
-      trackGamePlayed("pulse", score, questions.length);
+      trackGamePlayed("fluent", score, questions.length);
       const result = recordGame(score, questions.length);
       setStats(result.stats);
       setKpEarned(result.kpEarned);
@@ -205,22 +212,20 @@ export default function GamePage() {
     return () => clearInterval(interval);
   }, [isFinished]);
 
-  function toggleLang() { setLang(l => l === "en" ? "hi" : "en"); }
-
   function answer(option: string) {
     if (review || !q) return;
     setSelected(option);
     setReview(true);
-    if (option === q.answer[lang]) setScore(s => s + 1);
+    if (option === q.answer) setScore(s => s + 1);
   }
 
   function next() {
-    setSelected(null); setReview(false);
+    setSelected(null); setReview(false); setShowHint(false);
     setTimeLeft(QUESTION_TIME); setCurrent(c => c + 1);
   }
 
   async function shareScore() {
-    const text = `I scored ${score}/${questions.length} on Knovera Pulse! 🔥\nCan you beat me?\nhttps://playknovera.com`;
+    const text = `I scored ${score}/${questions.length} on Knovera Fluent! ✍️\nCan you beat me?\nhttps://playknovera.com`;
     if (navigator.share) {
       try { await navigator.share({ title: "Knovera Score", text }); } catch { /* cancelled */ }
     } else {
@@ -247,7 +252,7 @@ export default function GamePage() {
     const percentage = Math.round((score / questions.length) * 100);
     const displayStats = stats ?? { ...EMPTY_STATS };
     const level = Math.floor(displayStats.totalKP / 100) + 1;
-    const hasNextGames = !lexiDone || !fluentDone;
+    const hasNextGames = !pulseDone || !lexiDone;
 
     return (
       <main className="game-wrapper">
@@ -272,10 +277,7 @@ export default function GamePage() {
           {/* Result header */}
           <div className="result-header">
             <Link href="/" className="result-back-link">‹ Home</Link>
-            <span className="result-game-label">Pulse #{dayNumber}</span>
-            <button className="lang-toggle" onClick={toggleLang}>
-              {lang === "en" ? "हिंदी" : "English"}
-            </button>
+            <span className="result-game-label">Fluent #{dayNumber}</span>
           </div>
 
           {/* Main score card */}
@@ -298,7 +300,7 @@ export default function GamePage() {
             </div>
           </div>
 
-          {/* Streak card — single card, no swipe needed */}
+          {/* Streak card */}
           <div className={`swipe-wrapper ${showResult ? "visible" : ""}`}>
             <div className="streak-detail-card">
 
@@ -319,7 +321,7 @@ export default function GamePage() {
                 })()}
               </div>
 
-              {/* Heat tile track — ✓ done · 🔥 today · blank missed */}
+              {/* Heat tile track */}
               <div className="streak-heat-track">
                 {buildWeekCalendar(displayStats.currentStreak).map((d, i) => (
                   <div key={i} className="streak-heat-day">
@@ -370,6 +372,16 @@ export default function GamePage() {
             <div className="next-games-section">
               <p className="next-games-title">Keep playing today</p>
               <div className="next-games-grid">
+                {!pulseDone && (
+                  <a href="/game" className="next-game-tile">
+                    <div className="next-game-icon-tile" style={{ background: "linear-gradient(145deg,#ff6b35,#ff9a3c)" }}>🎯</div>
+                    <div className="next-game-info">
+                      <p className="next-game-name">Pulse</p>
+                      <p className="next-game-kp">⚡ +50 KP</p>
+                    </div>
+                    <span className="next-game-cta">▶ Play</span>
+                  </a>
+                )}
                 {!lexiDone && (
                   <a href="/word" className="next-game-tile">
                     <div className="next-game-icon-tile next-tile--lexi">📖</div>
@@ -380,23 +392,13 @@ export default function GamePage() {
                     <span className="next-game-cta">▶ Play</span>
                   </a>
                 )}
-                {!fluentDone && (
-                  <a href="/english" className="next-game-tile">
-                    <div className="next-game-icon-tile next-tile--fluent">✍️</div>
-                    <div className="next-game-info">
-                      <p className="next-game-name">Fluent</p>
-                      <p className="next-game-kp">⚡ +50 KP</p>
-                    </div>
-                    <span className="next-game-cta">▶ Play</span>
-                  </a>
-                )}
               </div>
             </div>
           )}
 
           {/* Countdown + actions */}
           <p className={`countdown-text ${showResult ? "visible" : ""}`}>
-            ⏳ Next Pulse in {countdown}
+            ⏳ Next Fluent in {countdown}
           </p>
 
           <div className={`result-actions ${showResult ? "visible" : ""}`}>
@@ -406,7 +408,7 @@ export default function GamePage() {
           </div>
 
           <p className={`result-footer ${showResult ? "visible" : ""}`}>
-            Come back tomorrow for a new challenge! 🔁
+            Come back tomorrow for a new challenge!
           </p>
 
         </div>
@@ -423,12 +425,10 @@ export default function GamePage() {
         <div className="game-header">
           <Link href="/" className="game-back-btn">‹</Link>
           <div className="game-header-center">
-            <span className="game-header-name">Pulse</span>
+            <span className="game-header-name">Fluent</span>
             <span className="game-header-num">#{dayNumber}</span>
           </div>
-          <button className="lang-toggle" onClick={toggleLang}>
-            {lang === "en" ? "हिंदी" : "English"}
-          </button>
+          <span style={{ width: 48 }} />
         </div>
 
         {/* Timer bar */}
@@ -436,7 +436,14 @@ export default function GamePage() {
           <div className={`timer-bar ${timeLeft <= 5 ? "danger" : ""}`}
             style={{ width: `${(timeLeft / QUESTION_TIME) * 100}%` }} />
         </div>
-        <p className={`timer-text ${timeLeft <= 5 ? "timer-text-danger" : ""}`}>⏱ {timeLeft}s</p>
+
+        {/* Category badge + timer text row */}
+        <div className="fluent-timer-category-row">
+          <p className={`timer-text ${timeLeft <= 5 ? "timer-text-danger" : ""}`}>⏱ {timeLeft}s</p>
+          {q.category && (
+            <span className="fluent-category-badge">{q.category}</span>
+          )}
+        </div>
 
         {/* Progress dots */}
         <div className="progress-dots">
@@ -445,18 +452,33 @@ export default function GamePage() {
           ))}
         </div>
 
+        {/* Hint button + popup */}
+        {q.hint && (
+          <div className="fluent-hint-area">
+            <button className="fluent-hint-btn" onClick={() => setShowHint(h => !h)}>
+              💡 Hint
+            </button>
+            {showHint && (
+              <div className="fluent-hint-toast">
+                <div className="fluent-hint-toast-arrow" />
+                <span className="fluent-hint-toast-text">{q.hint}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Question card */}
         <div className="question-card-wrapper">
           <div className="question-card">
             <span className="question-number">Q{current + 1}</span>
-            <span className="question-text">{q.question[lang]}</span>
+            <span className="question-text">{q.question}</span>
           </div>
         </div>
 
         {/* Options */}
         <div className="options">
-          {q.options[lang].map((o, idx) => {
-            const isCorrect  = o === q.answer[lang];
+          {q.options.map((o, idx) => {
+            const isCorrect  = o === q.answer;
             const isSelected = o === selected;
             let cls = "option";
             if (review) {
@@ -484,16 +506,14 @@ export default function GamePage() {
               <span className="explanation-icon">💡</span>
               <span className="explanation-title">Explanation</span>
             </div>
-            <p className="explanation-text">{q.explanation[lang]}</p>
+            <p className="explanation-text">{q.explanation}</p>
             <button className="next-btn" onClick={next}>
-              {current === questions.length - 1
-                ? (lang === "en" ? "See Results →" : "परिणाम देखें →")
-                : (lang === "en" ? "Next Question →" : "अगला प्रश्न →")}
+              {current === questions.length - 1 ? "See Results →" : "Next Question →"}
             </button>
           </div>
         )}
 
-        <div className="floating-brand">K</div>
+        <div className="floating-brand">F</div>
       </div>
     </main>
   );
