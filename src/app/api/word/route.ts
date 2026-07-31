@@ -7,6 +7,7 @@ const LAUNCH_YEAR = 2026;
 const LAUNCH_MONTH = 2; // February
 const LAUNCH_DAY = 24;
 const FIRST_SET = 9; // day_set value for launch day
+const LAST_SET = 105; // highest day_set currently seeded in the DB
 
 /**
  * Automatically calculates today's day_set based on days since launch.
@@ -21,6 +22,9 @@ const FIRST_SET = 9; // day_set value for launch day
  *   Mar 31, 2026 → 9 + 35 = 44  (just add a word with day_set 44)
  *   Apr 30, 2026 → 9 + 65 = 74
  *   May 31, 2026 → 9 + 96 = 105
+ *
+ * Once daysSinceLaunch runs past the last seeded set, it wraps back
+ * to FIRST_SET and cycles through the seeded range again.
  */
 function getTodaySetIndex(): number {
   // Get today's date in IST (Asia/Kolkata)
@@ -36,7 +40,8 @@ function getTodaySetIndex(): number {
   const daysSinceLaunch = Math.floor((todayMs - launchMs) / 86400000);
 
   if (daysSinceLaunch < 0) return FIRST_SET;
-  return FIRST_SET + daysSinceLaunch;
+  const rangeSize = LAST_SET - FIRST_SET + 1;
+  return FIRST_SET + (daysSinceLaunch % rangeSize);
 }
 
 export async function GET() {
